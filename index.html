@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3 Second Assignment</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      max-width: 500px;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 20px;
+    }
+    .container .text-center {
+      position: sticky;
+      bottom: 20px;
+    }
+    .status-circle {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      margin-right: 5px;
+    }
+    .status-circle.green {
+      background-color: green;
+    }
+    .status-circle.blue {
+      background-color: blue;
+    }
+    .status-circle.red {
+      background-color: red;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="text-center">
+    <button id="timerButton" class="btn btn-primary btn-lg">Start</button>
+  </div>
+  <div id="result"></div>
+  <div id="chart"></div>
+  <div id="hideButton" style="display: none;" class="text-center mt-3">
+    <button id="toggleResult" class="btn btn-secondary">Hide Results</button>
+  </div>
+</div>
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+  const goalTime = 3000;
+  const attempts = [];
+  let timerStart;
+  let chart;
+
+  const timerButton = document.getElementById('timerButton');
+  const resultDiv = document.getElementById('result');
+  const chartDiv = document.getElementById('chart');
+  const hideButton = document.getElementById('hideButton');
+  const toggleResultButton = document.getElementById('toggleResult');
+
+  timerButton.addEventListener('click', function () {
+    if (timerButton.textContent === 'Start') {
+      timerStart = Date.now();
+      timerButton.textContent = 'Stop';
+    } else {
+      const elapsedTime = Date.now() - timerStart;
+      const difference = Math.abs(elapsedTime - goalTime);
+      const status = getStatus(difference);
+
+      const attempt = {
+        start: timerStart,
+        stop: Date.now(),
+        elapsedTime: elapsedTime,
+        status: status
+      };
+      attempts.push(attempt);
+      displayResults();
+
+      timerButton.textContent = 'Start';
+    }
+  });
+
+  toggleResultButton.addEventListener('click', function () {
+    if (resultDiv.style.display === 'none') {
+      resultDiv.style.display = 'block';
+      chartDiv.style.display = 'block';
+      toggleResultButton.textContent = 'Hide Results';
+    } else {
+      resultDiv.style.display = 'none';
+      chartDiv.style.display = 'none';
+      toggleResultButton.textContent = 'Show Results';
+    }
+  });
+  function getStatus(difference) {
+    if (difference <= 200) {
+      return 'green';
+    } else if (difference <= 500) {
+      return 'blue';
+    } else {
+      return 'red';
+    }
+  }
+  function displayResults() {
+    const lastAttempt = attempts[attempts.length - 1];
+    let html = '<table class="table"><thead><tr><th>Attempt</th><th>Start Time</th><th>Stop Time</th><th>Elapsed Time (s)</th><th>Status</th></tr></thead><tbody>';
+    attempts.forEach((attempt, index) => {
+      html += `<tr><td>${index + 1}</td><td>${new Date(attempt.start).toLocaleString()}</td><td>${new Date(attempt.stop).toLocaleString()}</td><td>${attempt.elapsedTime / 1000}</td><td><span class="status-circle ${attempt.status}"></span>${attempt.status}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    resultDiv.innerHTML = html;
+
+    // Calculate summary
+    const totalAttempts = attempts.length;
+    const elapsedTimeArray = attempts.map(attempt => attempt.elapsedTime);
+    const minTime = Math.min(...elapsedTimeArray);
+    const maxTime = Math.max(...elapsedTimeArray);
+    const averageTime = totalAttempts > 0 ? elapsedTimeArray.reduce((acc, val) => acc + val, 0) / totalAttempts : 0;
+
+    const summaryHtml = `
+      <h3>Summary:</h3>
+      <p>Total Attempts: ${totalAttempts}</p>
+      <p>Minimum Elapsed Time: ${minTime / 1000} seconds</p>
+      <p>Maximum Elapsed Time: ${maxTime / 1000} seconds</p>
+      <p>Average Elapsed Time: ${averageTime / 1000} seconds</p>
+    `;
+    resultDiv.innerHTML += summaryHtml;
+
+    if (chart) {
+      chart.destroy();
+    }
+    if (attempts.length > 0) {
+      const chartData = {
+        series: [{
+          name: 'Time',
+          data: attempts.map(attempt => attempt.elapsedTime)
+        }],
+        chart: {
+          height: 300,
+          type: 'line',
+          zoom: {
+            enabled: false
+          }
+        },
+        xaxis: {
+          type: 'numeric',
+          labels: {
+            formatter: function (value) {
+              return `${value / 1000}s`;
+            }
+          }
+        }
+      };
+      chart = new ApexCharts(chartDiv, chartData);
+      chart.render();
+    }
+    hideButton.style.display = 'block';
+  }
+</script>
+</body>
+</html>
